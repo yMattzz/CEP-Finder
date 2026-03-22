@@ -199,7 +199,7 @@ export default function CepSearch() {
           <p className="text-[11px] font-semibold tracking-[0.12em] text-center uppercase text-gray-400 mb-1.5">
             Consulta de endereço
           </p>
-          <h1 className="text-4xl font-semibold dark:text-white text-center leading-tight">
+          <h1 className="text-4xl font-semibold text-center leading-tight">
             Busca por CEP
           </h1>
         </div>
