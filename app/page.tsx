@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +31,7 @@ const ESTADO_NAMES: Record<string, string> = {
 };
 
 const MAX_HISTORY = 6;
+const STORAGE_KEY = "cep-history";
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -65,6 +66,15 @@ function IconCheck() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
       <polyline points="2 8 6 12 14 4" />
+    </svg>
+  );
+}
+
+function IconMap() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M8 1.5C5.79 1.5 4 3.29 4 5.5c0 3 4 9 4 9s4-6 4-9c0-2.21-1.79-4-4-4z" />
+      <circle cx="8" cy="5.5" r="1.5" />
     </svg>
   );
 }
@@ -105,6 +115,30 @@ export default function CepSearch() {
   const [history, setHistory] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const [inputError, setInputError] = useState(false);
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setHistory(parsed.filter((c) => typeof c === "string").slice(0, MAX_HISTORY));
+        }
+      }
+    } catch {
+      // ignore corrupted storage
+    }
+  }, []);
+
+  // Persist history to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    } catch {
+      // ignore storage errors (e.g. quota / private mode)
+    }
+  }, [history]);
 
   // Mask: 00000-000
   const handleInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,6 +203,15 @@ export default function CepSearch() {
     navigator.clipboard.writeText(parts.filter(Boolean).join(", "));
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
+  }, [data]);
+
+  const handleOpenMaps = useCallback(() => {
+    if (!data) return;
+    const query = [data.logradouro, data.bairro, data.localidade, data.uf, data.cep]
+      .filter(Boolean)
+      .join(", ");
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   }, [data]);
 
   const handleHistoryClick = (cep: string) => {
@@ -261,13 +304,23 @@ export default function CepSearch() {
                 <p className="text-[13px] text-gray-400">{data.bairro}</p>
               </div>
 
-              <button
-                onClick={handleCopy}
-                className="font-syne shrink-0 flex items-center gap-1.5 h-9 px-3.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg bg-transparent transition-colors duration-150 hover:bg-gray-50 hover:text-gray-900 cursor-pointer"
-              >
-                {copied ? <IconCheck /> : <IconCopy />}
-                {copied ? "Copiado" : "Copiar"}
-              </button>
+              <div className="shrink-0 flex items-center gap-2">
+                <button
+                  onClick={handleCopy}
+                  className="font-syne flex items-center gap-1.5 h-9 px-3.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg bg-transparent transition-colors duration-150 hover:bg-gray-50 hover:text-gray-900 cursor-pointer"
+                >
+                  {copied ? <IconCheck /> : <IconCopy />}
+                  {copied ? "Copiado" : "Copiar"}
+                </button>
+
+                <button
+                  onClick={handleOpenMaps}
+                  className="font-syne flex items-center gap-1.5 h-9 px-3.5 text-xs font-medium text-white border border-gray-900 bg-gray-900 rounded-lg transition-colors duration-150 hover:opacity-80 cursor-pointer"
+                >
+                  <IconMap />
+                  Google Maps
+                </button>
+              </div>
             </div>
 
             {/* Fields grid */}
